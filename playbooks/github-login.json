@@ -1,0 +1,67 @@
+{
+  "name": "github-login",
+  "url": "https://github.com/login",
+  "steps": [
+    {
+      "intent": "fill username or email field",
+      "selector": "#login_field",
+      "selector_alternatives": [
+        "input[name='login']",
+        "role:textbox[name='Username or email address']"
+      ],
+      "action": "fill",
+      "value": null,
+      "value_template": "${username}",
+      "dom_fingerprint": "",
+      "confidence": 1.0,
+      "tier_resolved": 0,
+      "last_healed": null,
+      "wait_after_ms": 0,
+      "assertions": []
+    },
+    {
+      "intent": "fill password field",
+      "selector": "#password",
+      "selector_alternatives": [
+        "input[name='password']",
+        "input[type='password']"
+      ],
+      "action": "fill",
+      "value": null,
+      "value_template": "${password}",
+      "dom_fingerprint": "",
+      "confidence": 1.0,
+      "tier_resolved": 0,
+      "last_healed": null,
+      "wait_after_ms": 0,
+      "assertions": []
+    },
+    {
+      "intent": "click sign in button",
+      "selector": "input[type='submit'][value='Sign in']",
+      "selector_alternatives": [
+        "input[name='commit']",
+        "role:button[name='Sign in']"
+      ],
+      "action": "click",
+      "value": null,
+      "value_template": null,
+      "dom_fingerprint": "",
+      "confidence": 1.0,
+      "tier_resolved": 0,
+      "last_healed": null,
+      "wait_after_ms": 2000,
+      "assertions": []
+    }
+  ],
+  "variables": ["username", "password"],
+  "metadata": {
+    "domain": "github.com",
+    "description": "GitHub login flow"
+  },
+  "created_at": "2026-03-19T00:00:00+00:00",
+  "updated_at": "2026-03-19T00:00:00+00:00",
+  "version": 1,
+  "run_count": 0,
+  "success_count": 0
+}

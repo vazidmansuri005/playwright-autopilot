@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "autopilot": {
+      "type": "stdio",
+      "command": "autopilot-mcp",
+      "args": ["--llm", "gpt-4o"]
+    }
+  }
+}

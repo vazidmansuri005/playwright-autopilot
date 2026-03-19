@@ -1,0 +1,51 @@
+{
+  "name": "google-search",
+  "url": "https://www.google.com",
+  "steps": [
+    {
+      "intent": "fill search box",
+      "selector": "textarea[name='q']",
+      "selector_alternatives": [
+        "input[name='q']",
+        "role:combobox[name='Search']",
+        "#APjFqb"
+      ],
+      "action": "fill",
+      "value": null,
+      "value_template": "${query}",
+      "dom_fingerprint": "",
+      "confidence": 1.0,
+      "tier_resolved": 0,
+      "last_healed": null,
+      "wait_after_ms": 0,
+      "assertions": []
+    },
+    {
+      "intent": "press enter to search",
+      "selector": "textarea[name='q']",
+      "selector_alternatives": [
+        "input[name='q']",
+        "role:combobox[name='Search']"
+      ],
+      "action": "press",
+      "value": "Enter",
+      "value_template": null,
+      "dom_fingerprint": "",
+      "confidence": 1.0,
+      "tier_resolved": 0,
+      "last_healed": null,
+      "wait_after_ms": 2000,
+      "assertions": []
+    }
+  ],
+  "variables": ["query"],
+  "metadata": {
+    "domain": "google.com",
+    "description": "Google search flow"
+  },
+  "created_at": "2026-03-19T00:00:00+00:00",
+  "updated_at": "2026-03-19T00:00:00+00:00",
+  "version": 1,
+  "run_count": 0,
+  "success_count": 0
+}

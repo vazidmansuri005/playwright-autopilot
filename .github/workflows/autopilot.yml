@@ -1,0 +1,102 @@
+# GitHub Action for running playwright-autopilot playbooks in CI/CD.
+#
+# Usage in your repo:
+#   - uses: user/playwright-autopilot@v1
+#     with:
+#       playbook: login-flow
+#       variables: '{"email": "${{ secrets.TEST_EMAIL }}"}'
+#
+# Or as a reusable step:
+#   - name: Run browser automation
+#     run: |
+#       pip install playwright-autopilot
+#       playwright install chromium
+#       autopilot replay playbooks/login.json --max-tier 1 --save
+
+name: Autopilot Playbook Runner
+
+on:
+  workflow_call:
+    inputs:
+      playbook:
+        description: 'Path to playbook JSON file or playbook name'
+        required: true
+        type: string
+      variables:
+        description: 'JSON string of variables'
+        required: false
+        type: string
+        default: '{}'
+      max-tier:
+        description: 'Max escalation tier (0=replay only, 1=+heal, 2-4=+AI)'
+        required: false
+        type: number
+        default: 1
+      headed:
+        description: 'Show browser (for debugging)'
+        required: false
+        type: boolean
+        default: false
+      audit:
+        description: 'Enable audit trail'
+        required: false
+        type: boolean
+        default: false
+      visual-diff:
+        description: 'Enable visual regression detection'
+        required: false
+        type: boolean
+        default: false
+      python-version:
+        description: 'Python version'
+        required: false
+        type: string
+        default: '3.12'
+
+jobs:
+  run-playbook:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install playwright-autopilot
+        run: |
+          pip install playwright-autopilot
+          playwright install chromium --with-deps
+
+      - name: Run playbook
+        run: |
+          ARGS="autopilot replay ${{ inputs.playbook }}"
+          ARGS="$ARGS --vars '${{ inputs.variables }}'"
+          ARGS="$ARGS --max-tier ${{ inputs.max-tier }}"
+          ARGS="$ARGS --save"
+
+          if [ "${{ inputs.headed }}" = "true" ]; then
+            ARGS="$ARGS --headed"
+          fi
+          if [ "${{ inputs.audit }}" = "true" ]; then
+            ARGS="$ARGS --audit"
+          fi
+          if [ "${{ inputs.visual-diff }}" = "true" ]; then
+            ARGS="$ARGS --visual-diff"
+          fi
+
+          eval $ARGS
+
+      - name: Upload audit trail
+        if: inputs.audit && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autopilot-audit
+          path: ~/.autopilot/audit/
+
+      - name: Upload visual diffs
+        if: inputs.visual-diff && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autopilot-visual-diffs
+          path: ~/.autopilot/baselines/*_current.png

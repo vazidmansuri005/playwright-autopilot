@@ -1,0 +1,50 @@
+{
+  "name": "hackernews-top",
+  "url": "https://news.ycombinator.com",
+  "steps": [
+    {
+      "intent": "click on top stories link",
+      "selector": "a[href='news']",
+      "selector_alternatives": [
+        "a:has-text('top')",
+        "role:link[name='top']"
+      ],
+      "action": "click",
+      "value": null,
+      "value_template": null,
+      "dom_fingerprint": "",
+      "confidence": 0.9,
+      "tier_resolved": 0,
+      "last_healed": null,
+      "wait_after_ms": 1000,
+      "assertions": []
+    },
+    {
+      "intent": "click on first story link",
+      "selector": ".titleline > a",
+      "selector_alternatives": [
+        "td.title a.titlelink",
+        "span.titleline > a:first-child"
+      ],
+      "action": "click",
+      "value": null,
+      "value_template": null,
+      "dom_fingerprint": "",
+      "confidence": 0.8,
+      "tier_resolved": 0,
+      "last_healed": null,
+      "wait_after_ms": 2000,
+      "assertions": []
+    }
+  ],
+  "variables": [],
+  "metadata": {
+    "domain": "news.ycombinator.com",
+    "description": "Navigate to top HN story"
+  },
+  "created_at": "2026-03-19T00:00:00+00:00",
+  "updated_at": "2026-03-19T00:00:00+00:00",
+  "version": 1,
+  "run_count": 0,
+  "success_count": 0
+}

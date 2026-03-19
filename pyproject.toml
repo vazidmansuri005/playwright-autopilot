@@ -1,0 +1,64 @@
+[project]
+name = "playwright-autopilot"
+version = "0.1.0"
+description = "Browser automation that gets cheaper every time you run it."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Vazid Mansuri" }]
+keywords = ["playwright", "browser", "automation", "mcp", "ai", "self-healing", "testing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+]
+dependencies = [
+    "playwright>=1.40.0",
+]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.0.0"]
+claude = ["anthropic>=0.40.0"]
+openai = ["openai>=1.0.0"]
+litellm = ["litellm>=1.0.0"]
+langchain = ["langchain-core>=0.3.0"]
+all = [
+    "mcp>=1.0.0",
+    "anthropic>=0.40.0",
+    "openai>=1.0.0",
+    "litellm>=1.0.0",
+    "langchain-core>=0.3.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-timeout>=2.2.0",
+    "aiohttp>=3.9.0",
+]
+
+[project.scripts]
+autopilot = "autopilot.cli:main"
+autopilot-mcp = "autopilot.mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/autopilot"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "tier0: Deterministic replay tests",
+    "tier1: Heuristic self-heal tests",
+    "tier2: Compact AI tests",
+    "tier3: Full AI tests",
+    "tier4: Vision fallback tests",
+    "integration: Full pipeline tests",
+    "harness: Private test harness",
+]
