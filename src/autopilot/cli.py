@@ -24,6 +24,17 @@ def main():
 
     sub = parser.add_subparsers(dest="command", help="Available commands")
 
+    # explore command (THE MAIN ONE)
+    explore_p = sub.add_parser("explore", help="AI explores a website and generates a Playwright script")
+    explore_p.add_argument("--url", required=True, help="Starting URL")
+    explore_p.add_argument("--goal", required=True, help="What to automate in plain English")
+    explore_p.add_argument("--llm", default="claude-sonnet-4-20250514", help="LLM model")
+    explore_p.add_argument("--output", "-o", help="Output script path (default: auto-named)")
+    explore_p.add_argument("--lang", choices=["python", "typescript", "ts"], default="python", help="Script language")
+    explore_p.add_argument("--headed", action="store_true", help="Show browser window")
+    explore_p.add_argument("--max-steps", type=int, default=15, help="Max exploration steps")
+    explore_p.add_argument("--vars", type=json.loads, default={}, help='Variables as JSON')
+
     # replay command
     replay_p = sub.add_parser("replay", help="Replay a saved playbook")
     replay_p.add_argument("playbook", help="Path to playbook JSON file")
@@ -76,6 +87,7 @@ def main():
         logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     commands = {
+        "explore": lambda: asyncio.run(_explore(args)),
         "replay": lambda: asyncio.run(_replay(args)),
         "info": lambda: _info(args),
         "interactive": lambda: asyncio.run(_interactive(args)),
@@ -89,6 +101,108 @@ def main():
         commands[args.command]()
     else:
         parser.print_help()
+
+
+async def _explore(args):
+    from autopilot.agent import Agent
+    from autopilot.codegen import generate_python, generate_typescript
+
+    G = "\033[92m"  # Green
+    C = "\033[96m"  # Cyan
+    B = "\033[1m"   # Bold
+    Y = "\033[93m"  # Yellow
+    R = "\033[0m"   # Reset
+
+    print(f"\n{B}{C}  playwright-autopilot{R}")
+    print(f"  AI writes your Playwright tests. You run them for free.\n")
+    print(f"  {B}URL:{R}  {args.url}")
+    print(f"  {B}Goal:{R} {args.goal}")
+    if args.vars:
+        print(f"  {B}Vars:{R} {json.dumps(args.vars)}")
+    print()
+
+    print(f"  {B}{G}[1/3]{R} AI is exploring the site...")
+    print(f"        Browser will open. AI figures out the steps.\n")
+
+    async with Agent(
+        llm=args.llm,
+        headless=not args.headed,
+        timeout=15_000,
+    ) as agent:
+        result = await agent.explore(
+            url=args.url,
+            goal=args.goal,
+            variables=args.vars,
+            max_steps=args.max_steps,
+        )
+        tokens = agent.usage.total_tokens
+
+    print()
+    if result.success:
+        print(f"  {B}{G}[OK]{R} Exploration complete!")
+    else:
+        print(f"  {B}{Y}[PARTIAL]{R} {result.reason}")
+
+    print(f"        Steps: {len(result.playbook.steps)}")
+    print(f"        Tokens: {tokens:,} (~${tokens * 0.000018:.4f})")
+    print()
+
+    for i, s in enumerate(result.playbook.steps):
+        print(f"        {i+1}. {s.intent}")
+
+    if not result.playbook.steps:
+        print(f"\n  No steps recorded. Try a simpler goal or different site.")
+        sys.exit(1)
+
+    # Save playbook
+    playbook_dir = Path.home() / ".autopilot" / "playbooks"
+    playbook_dir.mkdir(parents=True, exist_ok=True)
+    pb_path = playbook_dir / f"{result.playbook.name}.json"
+    result.playbook.save(pb_path)
+    print(f"\n        Playbook: {pb_path}")
+
+    # Generate script
+    print(f"\n  {B}{G}[2/3]{R} Generating Playwright script...\n")
+
+    if args.lang in ("typescript", "ts"):
+        code = generate_typescript(result.playbook, variables=args.vars)
+        ext = ".spec.ts"
+    else:
+        code = generate_python(result.playbook, variables=args.vars)
+        ext = ".py"
+
+    if args.output:
+        script_path = Path(args.output)
+    else:
+        script_path = Path(f"test_{result.playbook.name.replace('-', '_')[:40]}{ext}")
+
+    script_path.write_text(code)
+
+    print(f"        Generated: {script_path} ({len(code.splitlines())} lines)")
+    print(f"        Language: {'TypeScript' if 'ts' in args.lang else 'Python'}")
+    print(f"        Dependencies: NONE (standard Playwright)")
+    print()
+
+    # Show key lines
+    print(f"        --- Key lines ---")
+    for line in code.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(("page.", "await page.", "def test_", "test(")):
+            print(f"        {stripped[:80]}")
+    print(f"        -----------------")
+
+    # Instructions
+    print(f"\n  {B}{G}[3/3]{R} Run it!\n")
+    if "ts" in args.lang:
+        print(f"        npx playwright test {script_path}")
+    else:
+        print(f"        pytest {script_path} -v")
+
+    print(f"\n  {B}Cost summary:{R}")
+    print(f"        AI exploration (once): {tokens:,} tokens (~${tokens * 0.000018:.4f})")
+    print(f"        Every run after:       0 tokens ($0.00)")
+    print(f"        Playwright MCP x100:   ~11,400,000 tokens (~$15.00)")
+    print()
 
 
 async def _replay(args):
