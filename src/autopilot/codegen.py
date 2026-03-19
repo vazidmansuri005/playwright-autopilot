@@ -252,35 +252,52 @@ def _action_to_python(step: PlaybookStep, variables: dict, parametrize: bool) ->
 
 
 def _build_resilient_locator_python(step: PlaybookStep) -> str:
-    """Build a resilient locator with fallback — tries primary, then alternatives."""
+    """Build a resilient locator with fallback — tries primary, then alternatives.
+
+    Prefers CSS selectors over role-based ones when the role locator might
+    match multiple elements (e.g., "Add to cart" button on a product listing page).
+    Uses .first when a locator could be ambiguous.
+    """
     sel = _escape(step.selector)
 
-    # Check if we can use Playwright's built-in resilient locators
+    # If the primary CSS selector looks specific (has ID, name, data-test, or nth),
+    # prefer it over role-based alternatives — it's more precise
+    if any(marker in step.selector for marker in ("#", "[name=", "[data-test", ":nth", "[id=")):
+        if step.selector_alternatives:
+            first_alt = _escape(step.selector_alternatives[0])
+            return f'page.locator("{sel}").or_(page.locator("{first_alt}"))'
+        return f'page.locator("{sel}")'
+
+    # Try label/placeholder first — these are usually unique
+    for alt in [step.selector] + step.selector_alternatives:
+        if alt.startswith("label="):
+            label = alt[6:]
+            return f'page.get_by_label("{_escape(label)}")'
+
+        if alt.startswith("placeholder=") or "[placeholder=" in alt:
+            ph_match = re.search(r"placeholder=['\"]?(.+?)['\"]?[\]$]?", alt)
+            if ph_match:
+                return f'page.get_by_placeholder("{_escape(ph_match.group(1))}")'
+
+    # Role-based locators — use .first to avoid strict mode violations
+    # when multiple elements share the same role+name (e.g., "Add to cart" buttons)
     for alt in [step.selector] + step.selector_alternatives:
         if alt.startswith("role:"):
             match = re.match(r"role:(\w+)\[name=['\"]?(.+?)['\"]?\]", alt)
             if match:
                 role, name = match.groups()
-                return f'page.get_by_role("{role}", name="{_escape(name)}")'
-
-        if alt.startswith("label="):
-            label = alt[6:]
-            return f'page.get_by_label("{_escape(label)}")'
-
-        if alt.startswith("placeholder="):
-            ph = alt[12:]
-            return f'page.get_by_placeholder("{_escape(ph)}")'
+                return f'page.get_by_role("{role}", name="{_escape(name)}").first'
 
         if alt.startswith("text="):
             text = alt[5:]
-            return f'page.get_by_text("{_escape(text)}")'
+            return f'page.get_by_text("{_escape(text)}").first'
 
     # Fallback to CSS with .or_()
     if step.selector_alternatives:
         first_alt = _escape(step.selector_alternatives[0])
-        return f'page.locator("{sel}").or_(page.locator("{first_alt}"))'
+        return f'page.locator("{sel}").or_(page.locator("{first_alt}")).first'
 
-    return f'page.locator("{sel}")'
+    return f'page.locator("{sel}").first'
 
 
 def _step_to_typescript(step: PlaybookStep, index: int, variables: dict) -> str:
@@ -325,23 +342,31 @@ def _step_to_typescript(step: PlaybookStep, index: int, variables: dict) -> str:
 
 def _build_resilient_locator_ts(step: PlaybookStep) -> str:
     """Build a resilient TypeScript locator."""
+    # Prefer specific CSS selectors
+    if any(m in step.selector for m in ("#", "[name=", "[data-test", ":nth")):
+        return f"page.locator('{_escape(step.selector)}')"
+
+    for alt in [step.selector] + step.selector_alternatives:
+        if alt.startswith("label="):
+            return f"page.getByLabel('{_escape(alt[6:])}')"
+
+        if alt.startswith("placeholder=") or "[placeholder=" in alt:
+            ph_match = re.search(r"placeholder=['\"]?(.+?)['\"]?[\]$]?", alt)
+            if ph_match:
+                return f"page.getByPlaceholder('{_escape(ph_match.group(1))}')"
+
+    # Role-based with .first() for safety
     for alt in [step.selector] + step.selector_alternatives:
         if alt.startswith("role:"):
             match = re.match(r"role:(\w+)\[name=['\"]?(.+?)['\"]?\]", alt)
             if match:
                 role, name = match.groups()
-                return f"page.getByRole('{role}', {{ name: '{_escape(name)}' }})"
-
-        if alt.startswith("label="):
-            return f"page.getByLabel('{_escape(alt[6:])}')"
-
-        if alt.startswith("placeholder="):
-            return f"page.getByPlaceholder('{_escape(alt[12:])}')"
+                return f"page.getByRole('{role}', {{ name: '{_escape(name)}' }}).first()"
 
         if alt.startswith("text="):
-            return f"page.getByText('{_escape(alt[5:])}')"
+            return f"page.getByText('{_escape(alt[5:])}').first()"
 
-    return f"page.locator('{_escape(step.selector)}')"
+    return f"page.locator('{_escape(step.selector)}').first()"
 
 
 def _assertion_to_python(assertion: str) -> str | None:
